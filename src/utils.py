@@ -1,12 +1,6 @@
 import json
 import logging
 import os.path
-
-
-
-
-
-
 from dotenv import load_dotenv
 
 dotenv_path="../.env"
