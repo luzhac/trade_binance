@@ -5,9 +5,12 @@ from dotenv import load_dotenv
 
 dotenv_path="../.env"
 
+log_dir = 'log'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 # Configure logging
 logging.basicConfig(
-    filename='../log/new.log',  # Path to the log file
+    filename=os.path.join(log_dir, 'new.log'),
     level=logging.INFO,  # Set the logging level (can be changed to DEBUG, ERROR, etc.)
     format='%(asctime)s - %(levelname)s - %(message)s',  # Format the log messages
     datefmt='%Y-%m-%d %H:%M:%S',  # Format of the datetime in logs
