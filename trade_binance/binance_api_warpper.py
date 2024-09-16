@@ -2,7 +2,7 @@
 import time
 from binance.error import ClientError
 from binance.spot import Spot
-from src.utils import get_env_variable, GmailSender, write_log,get_config
+from trade_binance.utils import get_env_variable, GmailSender, write_log,get_config
 
 
 class BinanceAPIWrapper:

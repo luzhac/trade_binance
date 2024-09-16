@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from src.binance_api_warpper import BinanceAPIWrapper
+from trade_binance.binance_api_warpper import BinanceAPIWrapper
 
 
 @pytest.fixture
