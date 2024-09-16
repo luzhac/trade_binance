@@ -45,7 +45,7 @@ def write_log(txt_log: str, *args):
     logging.info(log_message)
 
 
-class GmailSender:
+class GmailAPIWrapper:
     SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
     def __init__(self, credentials_path='../config/credentials.json', token_path='../config/token.json'):
