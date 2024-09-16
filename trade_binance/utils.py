@@ -25,7 +25,7 @@ def get_env_variable(name:str):
     return value
 
 def get_config(name:str):
-    with open('../config/config.json') as config_file:
+    with open('../config/config_template.json') as config_file:
         config = json.load(config_file)
     try:
         value = config[name]
