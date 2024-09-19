@@ -1,7 +1,23 @@
+import csv
+from base64 import urlsafe_b64encode
+from datetime import timedelta, datetime
+from email.mime.text import MIMEText
+
+import pandas as pd
+
+
+from datetime import datetime
+
 import json
 import logging
 import os.path
 from dotenv import load_dotenv
+
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 dotenv_path="../.env"
 
@@ -29,7 +45,7 @@ def get_config(name:str):
         with open('../config/config.json') as config_file:
             config = json.load(config_file)
     except FileNotFoundError:
-        return "development"
+        return None
     try:
         value = config[name]
     except KeyError:
@@ -37,32 +53,105 @@ def get_config(name:str):
     return value
 
 
-# Updated write_log function
-def write_log(txt_log: str, *args):
-    # Format the message
-    log_message = txt_log + ' ' + ' '.join(map(str, args))
-    # Log the message with INFO level
-    logging.info(log_message)
+def validate_config():
+    try:
+        with open('../config/config.json') as config_file:
+            config = json.load(config_file)
+    except FileNotFoundError:
+        return None
+
+def modify_minute(t1):
+    t2 = t1
+    v_m = t1.minute
+    if v_m % 5 == 3:
+        t2 = t1 + timedelta(minutes=2)
+    if v_m % 5 == 4:
+        t2 = t1 + timedelta(minutes=1)
+    t3 = datetime(t2.year, t2.month, t2.day, t2.hour, t2.minute)
+    return t3
+
+def write_log(log_message, *args):
+    log_message = f"{datetime.now()} {log_message} {' '.join(map(str, args))}\n"
+    with open("../log/q_binance_api.log", "a") as file_object:
+        file_object.write(log_message)
 
 
 class GmailAPIWrapper:
-    SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+    _instance = None
 
-    def __init__(self, credentials_path='../config/credentials.json', token_path='../config/token.json'):
-        self.credentials_path = credentials_path
-        self.token_path = token_path
-        self.creds = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(GmailAPIWrapper, cls).__new__(cls)
+        return cls._instance
 
+    def __init__(self):
+        if not hasattr(self, 'initialized'):  # Prevent re-initialization
+            try:
+                self.gmail_to = get_config('email_to')
+            except Exception as e:
+                print(f"Error reading gmail_to: {e}")
+                self.gmail_to = ''
 
-    def _authenticate(self):
+            self.gmail_from = ''
+            self.SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+            self.last_send_email1 = ""
+            self.last_send_email2 = ""
+            self.last_send_email_time = ""
 
-        """Authenticate the user and create a Gmail API service."""
+            self.initialized = True  # Mark as initialized
 
+    def create_message(self, sender: str, to: str, subject: str, message_text: str):
+        message = MIMEText(message_text)
+        message['to'] = to
+        message['from'] = sender
+        message['subject'] = subject
+        return {'raw': urlsafe_b64encode(message.as_bytes()).decode()}
 
-    def create_message(self, to, subject, body):
-        """Create a MIMEText email message."""
+    def send_message(self, service: str, user_id: str, message: str):
+        try:
+            message = (service.users().messages().send(userId=user_id, body=message).execute())
+            return message
+        except Exception as e:
+            print(str(datetime.now()), 'An error occurred: %s' % e)
 
+    def send_email(self, subject: str, content: str):
+        try:
+            if get_config('environment')=="development":
+                return
+        except Exception as e:
+            print(f"Error environment: {e}")
 
-    def send_email(self, to, subject, body):
-        """Send an email message via Gmail API."""
+        creds = None
+        try:
+            if os.path.exists('token.json'):
+                creds = Credentials.from_authorized_user_file('token.json', self.SCOPES)
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        'credentials.json', self.SCOPES)
+                    creds = flow.run_local_server(port=0, access_type='offline')
+                with open('token.json', 'w') as token:
+                    token.write(creds.to_json())
+        except Exception as e:
+            print(e)
 
+        try:
+            service = build('gmail', 'v1', credentials=creds)
+            subject = subject + ' ' + str(datetime.now())
+            message = self.create_message(self.gmail_from, self.gmail_to, subject, content)
+            self.send_message(service, 'me', message)
+        except HttpError as error:
+            print(f'An error occurred: {error}')
+
+    def send_email_not_duplicate(self, subject: str, content: str):
+        text_to_send = subject
+        if (text_to_send == self.last_send_email1 or text_to_send == self.last_send_email2) and (
+                datetime.now() - self.last_send_email_time).total_seconds() < 600:
+            pass
+        else:
+            self.send_email(subject, content)
+            self.last_send_email2 = self.last_send_email1
+            self.last_send_email1 = text_to_send
+            self.last_send_email_time = datetime.now()
