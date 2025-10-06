@@ -1,0 +1,16 @@
+apiVersion: v2
+name: myapp
+description: A Helm chart to deploy service-a, service-b, and monitoring resources
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: **
+    email: your-email@example.com
+keywords:
+  - kubernetes
+  - helm
+  - microservices
+  - service-a
+  - service-b
+

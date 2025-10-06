@@ -1,0 +1,53 @@
+replicaCount: 2
+
+image:
+  repository: **
+  tag: latest
+  pullPolicy: IfNotPresent
+
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+
+service:
+  type: LoadBalancer
+  port: 80
+
+
+redisService:
+  type: ClusterIP
+  port: 6379
+
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 75
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+
+
+
